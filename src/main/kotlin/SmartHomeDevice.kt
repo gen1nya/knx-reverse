@@ -16,14 +16,14 @@ enum class Rooms {
 }
 
 enum class DeviceKind {
-    LIGHT, FAN;
+    LIGHT, FAN, SHUTTER;
 }
 
 object WardrobeSpot: SmartHomeDevice(-609731, SmartHomeDeviceType.SWITCH, "Wardrobe spot", Rooms.MASTER_BEDROOM)
 object DeskSpot: SmartHomeDevice(-609730, SmartHomeDeviceType.SWITCH, "Desk spot", Rooms.MASTER_BEDROOM)
 object Bathroom: SmartHomeDevice(-609864, SmartHomeDeviceType.SWITCH, "Bathroom", Rooms.MASTER_BEDROOM)
 object Hidden: SmartHomeDevice(-609724, SmartHomeDeviceType.ANALOG, "Hidden", Rooms.MASTER_BEDROOM)
-object Shutter: SmartHomeDevice(-609736, SmartHomeDeviceType.ANALOG, "Shutter", Rooms.MASTER_BEDROOM)
+object Shutter: SmartHomeDevice(-609736, SmartHomeDeviceType.ANALOG, "Shutter", Rooms.MASTER_BEDROOM, DeviceKind.SHUTTER)
 
 object Kitchen: SmartHomeDevice(-609936, SmartHomeDeviceType.SWITCH, "Kitchen", Rooms.LOUNGE)
 object ExFan: SmartHomeDevice(-609907, SmartHomeDeviceType.SWITCH, "Kitchen ExFan", Rooms.LOUNGE, DeviceKind.FAN)
@@ -42,6 +42,25 @@ object Entrance: SmartHomeDevice(-609925, SmartHomeDeviceType.ANALOG, "Entrance"
 object Sitting: SmartHomeDevice(-609922, SmartHomeDeviceType.ANALOG, "Sitting", Rooms.LOUNGE)
 
 
-//102
-
-
+val devices = arrayListOf(
+    WardrobeSpot,
+    DeskSpot,
+    Hidden,
+    Bathroom,
+    Kitchen,
+    ExFan,
+    Undercubort,
+    Balcony1,
+    Balcony2,
+    KitchenBalcony2,
+    Wc,
+    GuestExFan,
+    BedroomBathroom,
+    BathroomMirror,
+    Corridor,
+    Dinning,
+    LoungeHidden,
+    Entrance,
+    Sitting,
+    Shutter,
+)

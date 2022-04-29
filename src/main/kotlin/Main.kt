@@ -1,17 +1,11 @@
 import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
-import com.jcraft.jsch.ChannelDirectTCPIP
-import com.jcraft.jsch.JSch
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpHandler
 import com.sun.net.httpserver.HttpServer
-import io.reactivex.rxjava3.schedulers.Schedulers
 import java.io.IOException
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
-import java.net.Socket
-import java.util.*
 import kotlin.concurrent.thread
 
 
@@ -48,177 +42,29 @@ val onezerotwoids = arrayListOf<Int>(
 )*/
 
 
-val devices = arrayListOf(
-    WardrobeSpot,
-    DeskSpot,
-    Hidden,
-    Bathroom,
-    Kitchen,
-    ExFan,
-    Undercubort,
-    Balcony1,
-    Balcony2,
-    KitchenBalcony2,
-    Wc,
-    GuestExFan,
-    BedroomBathroom,
-    BathroomMirror,
-    Corridor,
-    Dinning,
-    LoungeHidden,
-    Entrance,
-    Sitting,
-    Shutter,
-)
-
-lateinit var communicator: Communicator
-lateinit var directTcpChannel: ChannelDirectTCPIP
-var socketServer: ServerSocket? =null
-var socket: Socket? = null
-
-val switchDevicesState: HashMap<Int, Boolean> = hashMapOf()
-
-val httpExchanges = hashMapOf<Int, HttpExchange?>()
+var flats = hashMapOf<String, Server>()
 
 fun main(args: Array<String>) {
 
-    val ip = "192.168.1.205"
-    val port = 22
-    val directTcpIpPort = 7000
-
-    val jsch = JSch()
-    val properties = Properties().apply {
-        put("StrictHostKeyChecking", "no")
+    flats["201"] = Server("192.168.1.206").apply {
+        output.subscribe({ response ->
+            println("response 201: $response")
+        }, {
+            it.printStackTrace()
+        })
     }
-
-    jsch.addIdentity("tpctrl", UserInfo.privatekey, UserInfo.pubkey, null)
-    val schSession = jsch.getSession("root", ip, port)
-        .apply {
-            setConfig(properties)
-            setPassword(UserInfo.password)
-            userInfo = UserInfo
-            connect()
-        }
-
-    /* val channel = schSession.openChannel("shell")
-    channel.inputStream = System.`in`
-    channel.outputStream = System.out
-    channel.connect(3 * 1000) */
-
-    directTcpChannel = schSession.openChannel("direct-tcpip") as ChannelDirectTCPIP
-    val uuid = "aaf1b883-a0da-4ed4-8791-60d73e4a39d7"
-
-    //directTcpChannel.inputStream = System.`in`
-    directTcpChannel.outputStream = System.`out`
-
-    directTcpChannel.setPort(directTcpIpPort)
-    directTcpChannel.setHost(ip)
-    directTcpChannel.connect(1000)
-
-    communicator = Communicator(directTcpChannel)
-
-    val output = io.reactivex.rxjava3.core.Observable.create<String> { emitter ->
-        val inputStream = directTcpChannel.inputStream
-
-        while (true) {
-            Thread.sleep(1)
-            if(inputStream.available() > 0) {
-                val length = inputStream.available()
-                val bytes = ByteArray(length)
-                inputStream.read(bytes, 0, length)
-                val responses = bytes.toString(Charsets.UTF_8)
-                    .replace(">>", "")
-                    .replace(" ", "")
-                    .replace(";\n",",")
-                    .replace(";",",")
-                for (line in responses.split("\n").filter { it.isNotBlank() && it.isNotEmpty() }) {
-                    val response = line.replace("\n", "")
-                    emitter.onNext(response)
-                    try {
-                        if (socket?.isConnected == true) {
-                            socket?.getOutputStream()?.write((response + '\n').toByteArray())
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        createSocketServer()
-                    }
-
-                    if (response.startsWith("{result")) {
-                        val actionResponse = Gson().fromJson(response, ActionResponse::class.java)
-                        val txId = (actionResponse.trans?.toIntOrNull() ?: -1)
-                        httpExchanges[txId]?.let { httpExchange ->
-                            val resp = Gson().toJson(actionResponse, ActionResponse::class.java)
-                            httpExchange.sendResponseHeaders(200, resp.length.toLong())
-                            val os: OutputStream = httpExchange.responseBody
-                            os.write(resp.toByteArray())
-                            os.close()
-                        }
-                        httpExchanges[txId] = null
-
-                    }
-                    if(response.startsWith("{data:{data")) {
-                        val eventResponse = Gson().fromJson(response, EventResponse::class.java)
-                        if (eventResponse.event == EventResponse.UI_STATE_EVENT || eventResponse.event == EventResponse.UI_ANALOG_EVENT) {
-                            devices.find { it.id == eventResponse.data.id }
-                                ?.let {
-                                    it.value = eventResponse.data.data?.toDoubleOrNull() ?: 0.0
-                                }
-                        }
-                    }
-                }
-
-            }
-        }
+    flats["101"] = Server("192.168.1.205").apply {
+        output.subscribe({ response ->
+            println("response 101: $response")
+        }, {
+            it.printStackTrace()
+        })
     }
-        .subscribeOn(Schedulers.io())
-
-
-    val hashMapLogin = HashMap<String, Any>()
-    hashMapLogin["cmd"] = "ulog"
-    hashMapLogin["action"] = "login"
-    hashMapLogin["uid"] = uuid
-    hashMapLogin["name"] = "user"
-    println(communicator.send(hashMapLogin))
-
-    val evenHashMap = HashMap<String, Any>()
-    evenHashMap["cmd"] = "ctrl"
-    evenHashMap["action"] = "event"
-    evenHashMap["param"] = "on"
-    println(communicator.send(evenHashMap))
-
-
-    val lsldHashMap = HashMap<String, Any>()
-    lsldHashMap["cmd"] = "lsld"
-    communicator.send(lsldHashMap)
-
-
-    for (id in devices.map { it.id }) {
-        val hashMap = HashMap<String, Any>()
-        hashMap["cmd"] = "uievt"
-        hashMap["action"] = "add"
-        hashMap["id"] = id
-        communicator.send(hashMap)
-    }
-
-    /*for (id in ids) {
-        val hashMap = HashMap<String, Any>()
-        hashMap["cmd"] = "uievt"
-        hashMap["action"] = "add"
-        hashMap["id"] = id
-        communicator.send(hashMap)
-    }*/
-
-
-    output.subscribe({ response ->
-
-        println("response: $response")
-    }, {
-        it.printStackTrace()
-    })
 
     val server = HttpServer.create(InetSocketAddress(8000), 0)
     server.createContext("/device/switch", SwitchRequestHandler())
     server.createContext("/device/toggle", ToggleRequestHandler())
+    //server.createContext("/device/toggle", ToggleRequestHandler())
     server.createContext("/device/analog", AnalogRequestHandler())
     server.createContext("/server/devices/", DeviceListHandler())
     server.createContext("/v2/server/devices/", V2DeviceListHandler())
@@ -236,12 +82,14 @@ fun createSocketServer() {
     thread {
         try {
             socketAwaiting = true
-            socket?.close()
-            socketServer?.close()
-            socketServer = null
-            socket = null
-            socketServer = ServerSocket(8082)
-            socket = socketServer?.accept()
+            flats["101"]?.let {  knxServer101 ->
+                knxServer101.socket?.close()
+                knxServer101.socketServer?.close()
+                knxServer101.socketServer = null
+                knxServer101.socket = null
+                knxServer101.socketServer = ServerSocket(8082)
+                knxServer101.socket = knxServer101.socketServer?.accept()
+            }
             socketAwaiting = false
         } catch (e: Exception) {
             e.printStackTrace()
@@ -283,14 +131,24 @@ class AnalogRequestHandler: HttpHandler {
 
         val id = args["id"]?.toIntOrNull() ?: -1
         val value = args["value"]?.toDoubleOrNull() ?: 0.0
+        val flat: String = args["flat"] ?: t.let { exchange ->
+            exchange.sendResponseHeaders(400, 0L)
+            exchange.responseBody.close()
+            return
+        }
 
-        communicator.send(UiCtrlRequest(
-            action = "onAnalog",
-            id = id,
-            arg1 = value,
-            arg2 = 0
-        ))
-        httpExchanges[communicator.txId.get()] = t
+        flats[flat]?.let { knxServer101 ->
+            knxServer101.communicator.send(UiCtrlRequest(
+                action = "onAnalog",
+                id = id,
+                arg1 = value,
+                arg2 = 0
+            ))
+            knxServer101.httpExchanges[knxServer101.communicator.txId.get()] = t
+        } ?: t.let { exchange ->
+            exchange.sendResponseHeaders(400, 0L)
+            exchange.responseBody.close()
+        }
     }
 }
 
@@ -301,14 +159,25 @@ class SwitchRequestHandler : HttpHandler {
 
         val id = args["id"]?.toIntOrNull() ?: -1
         val state = args["enable"].toBoolean()
+        val flat: String = args["flat"] ?: t.let { exchange ->
+            exchange.sendResponseHeaders(400, 0L)
+            exchange.responseBody.close()
+            return
+        }
 
-        communicator.send(UiCtrlRequest(
-            action = "onClick",
-            id = id,
-            arg1 = if (state) 0 else 1,
-            arg2 = 0
-        ))
-        httpExchanges[communicator.txId.get()] = t
+        flats[flat]?.let { knxServer101 ->
+            knxServer101.communicator.send(UiCtrlRequest(
+                action = "onClick",
+                id = id,
+                arg1 = if (state) 0 else 1,
+                arg2 = 0
+            ))
+            knxServer101.httpExchanges[knxServer101.communicator.txId.get()] = t
+        } ?: t.let { exchange ->
+            exchange.sendResponseHeaders(400, 0L)
+            exchange.responseBody.close()
+        }
+
     }
 }
 
@@ -317,37 +186,24 @@ class ToggleRequestHandler : HttpHandler {
         val args = t.requestURI.splitQuery()
 
         val id = args["id"]?.toIntOrNull() ?: -1
-        switchDevicesState[id] = !(switchDevicesState[id]?: true)
-        communicator.send(UiCtrlRequest(
-            action = "onClick",
-            id = id,
-            arg1 = if (switchDevicesState[id] == true) 0 else 1,
-            arg2 = 0
-        ))
-        httpExchanges[communicator.txId.get()] = t
+        val flat: String = args["flat"] ?: t.let { exchange ->
+            exchange.sendResponseHeaders(400, 0L)
+            exchange.responseBody.close()
+            return
+        }
 
+        flats[flat]?.let { knxServer ->
+            knxServer.switchDevicesState[id] = !(knxServer.switchDevicesState[id]?: true)
+            knxServer.communicator.send(UiCtrlRequest(
+                action = "onClick",
+                id = id,
+                arg1 = if (knxServer.switchDevicesState[id] == true) 0 else 1,
+                arg2 = 0
+            ))
+            knxServer.httpExchanges[knxServer.communicator.txId.get()] = t
+        } ?: t.let { exchange ->
+            exchange.sendResponseHeaders(400, 0L)
+            exchange.responseBody.close()
+        }
     }
 }
-
-
-open class BaseRequest(
-    @SerializedName("cmd")
-    val command: String = ""
-) {
-    @SerializedName("trans")
-    var transId: String = "0"
-
-}
-
-class UiCtrlRequest(
-    @SerializedName("action")
-    val action: String = "onClick",
-    @SerializedName("id")
-    val id: Int,
-    @SerializedName("arg1")
-    val arg1: Any,
-    @SerializedName("arg2")
-    val arg2: Int,
-): BaseRequest(command = "uictrl")
-
-
