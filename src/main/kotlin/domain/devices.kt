@@ -26,9 +26,11 @@ object Heater1: SmartHomeDevice(-609718, SmartHomeDeviceType.SWITCH, "Heater 1",
 object Heater2: SmartHomeDevice(-611249, SmartHomeDeviceType.SWITCH, "Heater 2", Rooms.LOUNGE, DeviceKind.HEATER)
 object Heater3: SmartHomeDevice(-610201, SmartHomeDeviceType.SWITCH, "Heater 3", Rooms.LOUNGE, DeviceKind.HEATER)
 
+object Shutter102: SmartHomeDevice(-609735, SmartHomeDeviceType.ANALOG, "Shutter 102", Rooms.LOUNGE, DeviceKind.SHUTTER)
+object Spotlight: SmartHomeDevice(-611977, SmartHomeDeviceType.SWITCH, "Spotlight 102", Rooms.LOUNGE, DeviceKind.LIGHT)
 
 val devices = arrayListOf(
-    WardrobeSpot,
+    /*WardrobeSpot,
     DeskSpot,
     Hidden,
     Bathroom,
@@ -50,5 +52,7 @@ val devices = arrayListOf(
     Shutter,
     Heater1,
     Heater2,
-    Heater3,
+    Heater3,*/
+    Shutter102,
+    Spotlight,
 )

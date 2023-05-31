@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
             it.printStackTrace()
         })
     }*/
-    flats["101"] = Server("192.168.1.205").apply {
+    flats["101"] = Server("192.168.1.206").apply {
         output.subscribe({ response ->
             println("response 101: $response")
         }, {
@@ -46,6 +46,7 @@ fun main(args: Array<String>) {
         createContext("/device/analog", AnalogRequestHandler())
         createContext("/server/domain.getDevices/", DeviceListHandler())
         createContext("/v2/server/domain.getDevices/", V2DeviceListHandler())
+        createContext("/device/shatterButton", ShatterButtonHandler())
         executor = null
         start()
     }

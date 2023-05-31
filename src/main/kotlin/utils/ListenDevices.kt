@@ -4,7 +4,7 @@ import data.Communicator
 import java.util.*
 
 fun main(args: Array<String>) {
-    val ip = "192.168.1.205"
+    val ip = "192.168.1.206"
     val port = 22
     val directTcpIpPort = 7000
 

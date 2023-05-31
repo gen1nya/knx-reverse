@@ -3,8 +3,8 @@ import java.util.*
 
 
 fun main(args: Array<String>) {
-    val ip = "192.168.1.205"
-    val port = 22
+    val ip = "46.199.87.66"
+    val port = 65205
 
     val jsch = JSch()
     val properties = Properties().apply {
